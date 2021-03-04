@@ -1,8 +1,8 @@
 # wcsac 
 
-If you want to use the algorithm WCSAC from the paper, make sure to install Safety Gym according to the instructions on the [Safety Gym repo](https://github.com/openai/safety-gym).
+**Warning:** If you want to use the algorithm WCSAC from the paper, make sure to install Safety Gym according to the instructions on the [Safety Gym repo](https://github.com/openai/safety-gym).
 The various utilities here are copied over from [Spinning Up in Deep RL](https://github.com/openai/spinningup/tree/master/spinup/utils). 
-Two custom environments ('StaticEnv-v0' and 'DynamicEnv-v0') are created within wcsac.py and saclag.py.
+Two custom environments (`StaticEnv-v0` and `DynamicEnv-v0`) are created within wcsac.py and saclag.py.
 
 ## Installation
 
