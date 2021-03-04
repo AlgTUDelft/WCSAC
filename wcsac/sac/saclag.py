@@ -10,9 +10,54 @@ from wcsac.utils.logx import EpochLogger
 from wcsac.utils.mpi_tf import sync_all_params, MpiAdamOptimizer
 from wcsac.utils.mpi_tools import mpi_fork, mpi_sum, proc_id, mpi_statistics_scalar, num_procs
 from safety_gym.envs.engine import Engine
-
+from gym.envs.registration import register
 
 EPS = 1e-8
+
+config1 = {
+        'placements_extents': [-1.5, -1.5, 1.5, 1.5],
+        'robot_base': 'xmls/point.xml',
+        'task': 'goal',
+        'goal_size': 0.3,
+        'goal_keepout': 0.305,
+        'goal_locations': [(1.1, 1.1)],
+        'observe_goal_lidar': True,
+        'observe_hazards': True,
+        'constrain_hazards': True,
+        'lidar_max_dist': 3,
+        'lidar_num_bins': 16,
+        'hazards_num': 1,
+        'hazards_size': 0.7,
+        'hazards_keepout': 0.705,
+        'hazards_locations': [(0, 0)]
+        }
+
+
+register(id='StaticEnv-v0',
+         entry_point='safety_gym.envs.mujoco:Engine',
+         kwargs={'config': config1})
+
+config2 = {
+        'placements_extents': [-1.5, -1.5, 1.5, 1.5],
+        'robot_base': 'xmls/point.xml',
+        'task': 'goal',
+        'goal_size': 0.3,
+        'goal_keepout': 0.305,
+        'observe_goal_lidar': True,
+        'observe_hazards': True,
+        'constrain_hazards': True,
+        'lidar_max_dist': 3,
+        'lidar_num_bins': 16,
+        'hazards_num': 3,
+        'hazards_size': 0.3,
+        'hazards_keepout': 0.305
+        }
+
+register(id='DynamicEnv-v0',
+         entry_point='safety_gym.envs.mujoco:Engine',
+         kwargs={'config': config2})
+
+
 
 def placeholder(dim=None):
     return tf.placeholder(dtype=tf.float32, shape=(None,dim) if dim else (None,))
@@ -20,7 +65,7 @@ def placeholder(dim=None):
 def placeholders(*args):
     return [placeholder(dim) for dim in args]
 
-def mlp(x, hidden_sizes=(32,), activation=tf.tanh, output_activation=None):
+def mlp(x, hidden_sizes=(64,), activation=tf.tanh, output_activation=None):
     for h in hidden_sizes[:-1]:
         x = tf.layers.dense(x, units=h, activation=activation)
     return tf.layers.dense(x, units=hidden_sizes[-1], activation=output_activation)
@@ -84,7 +129,7 @@ def apply_squashing_func(mu, pi, logp_pi):
 """
 Actors and Critics
 """
-def mlp_actor(x, a, name='pi', hidden_sizes=(32,32), activation=tf.nn.relu,
+def mlp_actor(x, a, name='pi', hidden_sizes=(64,64), activation=tf.nn.relu,
               output_activation=None, policy=mlp_gaussian_policy, action_space=None):
     # policy
     with tf.variable_scope(name):
@@ -99,7 +144,7 @@ def mlp_actor(x, a, name='pi', hidden_sizes=(32,32), activation=tf.nn.relu,
     return mu, pi, logp_pi
 
 
-def mlp_critic(x, a, pi, name, hidden_sizes=(32,32), activation=tf.nn.relu,
+def mlp_critic(x, a, pi, name, hidden_sizes=(64,64), activation=tf.nn.relu,
                output_activation=None, policy=mlp_gaussian_policy, action_space=None):
 
     fn_mlp = lambda x : tf.squeeze(mlp(x=x,
@@ -153,14 +198,14 @@ class ReplayBuffer:
 """
 Soft Actor-Critic
 """
-def sac(actor_fn=mlp_actor, critic_fn=mlp_critic, ac_kwargs=dict(), seed=0,
+def sac(env_fn, actor_fn=mlp_actor, critic_fn=mlp_critic, ac_kwargs=dict(), seed=0,
         steps_per_epoch=1000, epochs=100, replay_size=int(1e6), gamma=0.99,
         polyak=0.995, lr=1e-4, batch_size=1024, local_start_steps=int(1e3),
         max_ep_len=1000, logger_kwargs=dict(), save_freq=10, local_update_after=int(1e3),
         update_freq=1, render=False, 
         fixed_entropy_bonus=None, entropy_constraint=-1.0,
         fixed_cost_penalty=None, cost_constraint=None, cost_lim=None,
-        reward_scale=1,
+        reward_scale=1, lr_scale = 1, damp_scale = 0,
         ):
     """
 
@@ -265,35 +310,13 @@ def sac(actor_fn=mlp_actor, critic_fn=mlp_critic, ac_kwargs=dict(), seed=0,
             If None, cost_lim is not used, and if no cost constraints are used, do naive optimization.
     """
     use_costs = fixed_cost_penalty or cost_constraint or cost_lim
-    #use_costs = False
-    
-    #for safety_coefficient
-    #cost_constraint = cost_lim * (1 - gamma ** max_ep_len) / (1 - gamma) / max_ep_len
-    #index_risk = 1.0
 
     logger = EpochLogger(**logger_kwargs)
     logger.save_config(locals())
 
     # Env instantiation
-    config = {
-        'placements_extents': [-1.5, -1.5, 1.5, 1.5],
-        'robot_base': 'xmls/point.xml',
-        'task': 'goal',
-        'goal_size': 0.3,
-        'goal_keepout': 0.305,
-        'goal_locations': [(1.1, 1.1)],
-        'observe_goal_lidar': True,
-        'observe_hazards': True,
-        'constrain_hazards': True,
-        'lidar_max_dist': 3,
-        'lidar_num_bins': 16,
-        'hazards_num': 1,
-        'hazards_size': 0.7,
-        'hazards_keepout': 0.705,
-        'hazards_locations': [(0, 0)]
-        }
+    env, test_env = env_fn(), env_fn()
     
-    env, test_env = Engine(config), Engine(config)
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0]
 
@@ -384,11 +407,12 @@ def sac(actor_fn=mlp_actor, critic_fn=mlp_critic, ac_kwargs=dict(), seed=0,
     # Targets for Q and V regression
     q_backup = tf.stop_gradient(r_ph + gamma*(1-d_ph)*(min_q_pi_targ - alpha * logp_pi2))
     qc_backup = tf.stop_gradient(c_ph + gamma*(1-d_ph)*qc_pi_targ)
-
+    
+    cost_constraint = cost_lim * (1 - gamma ** max_ep_len) / (1 - gamma) / max_ep_len
+    damp = damp_scale * tf.reduce_mean(cost_constraint - qc)
+    
     # Soft actor-critic losses
-    #pi_loss = tf.reduce_mean(alpha * logp_pi - safety_coefficient * min_q_pi + beta * qc_pi)
-    pi_loss = tf.reduce_mean(alpha * logp_pi - min_q_pi + beta * qc_pi)
-    #pi_loss = tf.reduce_mean(alpha * logp_pi - min_q_pi)
+    pi_loss = tf.reduce_mean(alpha * logp_pi - min_q_pi + (beta - damp) * qc_pi)
     qr1_loss = 0.5 * tf.reduce_mean((q_backup - qr1)**2)
     qr2_loss = 0.5 * tf.reduce_mean((q_backup - qr2)**2)
     qc_loss = 0.5 * tf.reduce_mean((qc_backup - qc)**2)
@@ -427,7 +451,7 @@ def sac(actor_fn=mlp_actor, critic_fn=mlp_critic, ac_kwargs=dict(), seed=0,
             train_entreg_op = entreg_optimizer.minimize(alpha_loss, var_list=get_vars('entreg'))
 
     if use_costs and fixed_cost_penalty is None:
-        costpen_optimizer = MpiAdamOptimizer(learning_rate=lr)
+        costpen_optimizer = MpiAdamOptimizer(learning_rate=lr*lr_scale)
         if fixed_entropy_bonus is None:
             with tf.control_dependencies([train_entreg_op]):
                 train_costpen_op = costpen_optimizer.minimize(beta_loss, var_list=get_vars('costpen'))
@@ -467,36 +491,6 @@ def sac(actor_fn=mlp_actor, critic_fn=mlp_critic, ac_kwargs=dict(), seed=0,
     def get_action(o, deterministic=False):
         act_op = mu if deterministic else pi
         return sess.run(act_op, feed_dict={x_ph: o.reshape(1,-1)})[0]
-        '''
-        act1  = sess.run(pi, feed_dict={x_ph: o.reshape(1,-1)})[0]
-        act2  = sess.run(pi, feed_dict={x_ph: o.reshape(1,-1)})[0]
-        act3  = sess.run(pi, feed_dict={x_ph: o.reshape(1,-1)})[0]
-        act4  = sess.run(pi, feed_dict={x_ph: o.reshape(1,-1)})[0]
-        act5  = sess.run(pi, feed_dict={x_ph: o.reshape(1,-1)})[0]
-        act6  = sess.run(pi, feed_dict={x_ph: o.reshape(1,-1)})[0]
-        act7  = sess.run(pi, feed_dict={x_ph: o.reshape(1,-1)})[0]
-        act8  = sess.run(pi, feed_dict={x_ph: o.reshape(1,-1)})[0]
-        act9  = sess.run(pi, feed_dict={x_ph: o.reshape(1,-1)})[0]
-        a     = [act1, act2, act3, act4, act5, act6, act7, act8, act9]
-        
-        qc1   = sess.run(qc, feed_dict={x_ph: o.reshape(1,-1), a_ph: act1.reshape(1,-1)})[0]
-        qc2   = sess.run(qc, feed_dict={x_ph: o.reshape(1,-1), a_ph: act2.reshape(1,-1)})[0]
-        qc3   = sess.run(qc, feed_dict={x_ph: o.reshape(1,-1), a_ph: act3.reshape(1,-1)})[0]
-        qc4   = sess.run(qc, feed_dict={x_ph: o.reshape(1,-1), a_ph: act4.reshape(1,-1)})[0]
-        qc5   = sess.run(qc, feed_dict={x_ph: o.reshape(1,-1), a_ph: act5.reshape(1,-1)})[0]
-        qc6   = sess.run(qc, feed_dict={x_ph: o.reshape(1,-1), a_ph: act6.reshape(1,-1)})[0]
-        qc7   = sess.run(qc, feed_dict={x_ph: o.reshape(1,-1), a_ph: act7.reshape(1,-1)})[0]
-        qc8   = sess.run(qc, feed_dict={x_ph: o.reshape(1,-1), a_ph: act8.reshape(1,-1)})[0]
-        qc9   = sess.run(qc, feed_dict={x_ph: o.reshape(1,-1), a_ph: act9.reshape(1,-1)})[0]
-        
-        qc_a     = [qc1, qc2, qc3, qc4, qc5, qc6, qc7, qc8, qc9]
-        
-        qc_a = np.array(qc_a)
-        
-        index_a = np.argmin(qc_a)
-        
-        return a[index_a]
-        '''
         
     def test_agent(n=10):
         for j in range(n):
@@ -546,10 +540,6 @@ def sac(actor_fn=mlp_actor, critic_fn=mlp_critic, ac_kwargs=dict(), seed=0,
         # Step the env
         o2, r, d, info = env.step(a)
         r *= reward_scale  # yee-haw
-        '''
-        Take number of steps into account
-        '''
-        r -= 0.02
         c = info.get('cost', 0)
         ep_ret += r
         ep_cost += c
@@ -589,10 +579,6 @@ def sac(actor_fn=mlp_actor, critic_fn=mlp_critic, ac_kwargs=dict(), seed=0,
                              c_ph: batch['costs'],
                              d_ph: batch['done'],
                             }
-                #aaa = sess.run(logp_pi, feed_dict)
-                #bbb = sess.run(pi_entropy, feed_dict)
-                #print(aaa)
-                #print(bbb)
                 if t < local_update_after:
                     logger.store(**sess.run(vars_to_get, feed_dict))
                 else:
@@ -663,7 +649,8 @@ if __name__ == '__main__':
     import json
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--hid', type=int, default=32)
+    parser.add_argument('--env', type=str, default='Safexp-PointGoal1-v0')
+    parser.add_argument('--hid', type=int, default=64)
     parser.add_argument('--l', type=int, default=2)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--lr', type=float, default=1e-3)
@@ -676,12 +663,14 @@ if __name__ == '__main__':
     parser.add_argument('--render', default=False, action='store_true')
     parser.add_argument('--local_start_steps', default=500, type=int)
     parser.add_argument('--local_update_after', default=500, type=int)
-    parser.add_argument('--batch_size', default=32, type=int)
+    parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--fixed_entropy_bonus', default=None, type=float)
     parser.add_argument('--entropy_constraint', type=float, default= -1)
     parser.add_argument('--fixed_cost_penalty', default=None, type=float)
     parser.add_argument('--cost_constraint', type=float, default=None)
     parser.add_argument('--cost_lim', type=float, default=None)
+    parser.add_argument('--lr_s', type=int, default=1)
+    parser.add_argument('--damp_s', type=int, default=0)
     parser.add_argument('--logger_kwargs_str', type=json.loads, default='{"output_dir": "./data"}')
     args = parser.parse_args()
 
@@ -692,17 +681,17 @@ if __name__ == '__main__':
 
     mpi_fork(args.cpu)
 
-    from wcsac.utils.run_utils import setup_logger_kwargs
+    from safe_rl.utils.run_utils import setup_logger_kwargs
     
     logger_kwargs = setup_logger_kwargs(args.exp_name, args.seed)
     logger_kwargs= args.logger_kwargs_str
 
-    sac(actor_fn=mlp_actor, critic_fn=mlp_critic,
+    sac(lambda : gym.make(args.env), actor_fn=mlp_actor, critic_fn=mlp_critic,
         ac_kwargs=dict(hidden_sizes=[args.hid]*args.l),
         gamma=args.gamma, seed=args.seed, epochs=args.epochs, batch_size=args.batch_size,
         logger_kwargs=logger_kwargs, steps_per_epoch=args.steps_per_epoch,
         update_freq=args.update_freq, lr=args.lr, render=args.render,
         local_start_steps=args.local_start_steps, local_update_after=args.local_update_after,
         fixed_entropy_bonus=args.fixed_entropy_bonus, entropy_constraint=args.entropy_constraint,
-        fixed_cost_penalty=args.fixed_cost_penalty, cost_constraint=args.cost_constraint, cost_lim = args.cost_lim
+        fixed_cost_penalty=args.fixed_cost_penalty, cost_constraint=args.cost_constraint, cost_lim = args.cost_lim, lr_scale = args.lr_s, damp_scale = args.damp_s,
         )
