@@ -341,14 +341,7 @@ def sac(env_fn, actor_fn=mlp_actor, critic_fn=mlp_critic, ac_kwargs=dict(), seed
         qr1, qr1_pi = critic_fn(x_ph, a_ph, pi, name='qr1', **ac_kwargs)
         qr2, qr2_pi = critic_fn(x_ph, a_ph, pi, name='qr2', **ac_kwargs)
         qc, qc_pi = critic_fn(x_ph, a_ph, pi, name='qc', **ac_kwargs)
-        #risk_matrics = tf.multiply(tf.ones_like(qc_pi), tf.constant(index_risk))
-        #safety_coefficient = tf.where(tf.greater(cost_constraint, qc_pi), tf.ones_like(qc_pi), risk_matrics)
-        #cost_constraint_matrics = tf.multiply(tf.ones_like(qc_pi), tf.constant(cost_constraint))
-        #violation_matrics = tf.subtract(cost_constraint_matrics, qc_pi)
-        #numerator = 
-        #denominator = tf.multiply(tf.ones_like(qc_pi), tf.constant(12.5))
-        #risk_matrics = tf.divide(violation_matrics, denominator)
-        #safety_coefficient = tf.where(tf.greater(cost_constraint, qc_pi), risk_matrics, tf.zeros_like(qc_pi))
+        
 
     with tf.variable_scope('main', reuse=True):
         # Additional policy output from a different observation placeholder
