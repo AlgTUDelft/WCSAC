@@ -1,4 +1,4 @@
-# wcsac 
+# WCSAC
 
 Portions of the code in saclag.py and wcsac.py are adapted from [Safety Starter Agents](https://github.com/openai/safety-starter-agents).
 
