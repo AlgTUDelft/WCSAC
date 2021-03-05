@@ -52,8 +52,7 @@ If you use WCSAC code in your paper, please cite:
       Spaan, Matthijs T. J.
   },
   booktitle = {Thirty-Fifth AAAI Conference on Artificial Intelligence},
-  year      = {2021},
-  note      = {To appear}
+  year      = {2021}
 }
 ```
 
