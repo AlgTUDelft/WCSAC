@@ -16,7 +16,7 @@ Two ways to install this package:
 To install this package:
 
 ```
-git clone https://github.com/yangqisong/wcsac.git
+git clone https://github.com/AlgTUDelft/WCSAC.git
 
 cd wcsac
 
