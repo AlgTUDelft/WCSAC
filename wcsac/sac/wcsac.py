@@ -342,6 +342,7 @@ def sac(env_fn, actor_fn=mlp_actor, critic_fn=mlp_critic, var_fn=mlp_var, ac_kwa
     act_dim = env.action_space.shape[0]
 
     # Setting seeds
+    seed += 10000 * proc_id()
     tf.set_random_seed(seed)
     np.random.seed(seed)
     env.seed(seed)
@@ -691,7 +692,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--exp_name', type=str, default='sac')
-    parser.add_argument('--steps_per_epoch', type=int, default=4000)
+    parser.add_argument('--steps_per_epoch', type=int, default=30000)
     parser.add_argument('--update_freq', type=int, default=100)
     parser.add_argument('--cpu', type=int, default=4)
     parser.add_argument('--render', default=False, action='store_true')
@@ -703,8 +704,8 @@ if __name__ == '__main__':
     parser.add_argument('--fixed_cost_penalty', default=None, type=float)
     parser.add_argument('--cost_constraint', type=float, default=None)
     parser.add_argument('--cost_lim', type=float, default=None)
-    parser.add_argument('--lr_s', type=int, default=1)
-    parser.add_argument('--damp_s', type=int, default=0)
+    parser.add_argument('--lr_s', type=int, default=50)
+    parser.add_argument('--damp_s', type=int, default=10)
     parser.add_argument('--logger_kwargs_str', type=json.loads, default='{"output_dir": "./data"}')
     args = parser.parse_args()
 
