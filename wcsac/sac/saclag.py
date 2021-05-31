@@ -675,7 +675,7 @@ if __name__ == '__main__':
 
     mpi_fork(args.cpu)
 
-    from safe_rl.utils.run_utils import setup_logger_kwargs
+    from wcsac.utils.run_utils import setup_logger_kwargs
     
     logger_kwargs = setup_logger_kwargs(args.exp_name, args.seed)
     logger_kwargs= args.logger_kwargs_str
