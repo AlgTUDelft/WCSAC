@@ -4,7 +4,7 @@ import joblib
 import os
 import os.path as osp
 import tensorflow as tf
-from wcsac.utils.logx import restore_tf_graph
+from safe_rl.utils.logx import restore_tf_graph
 
 def load_policy(fpath, itr='last', deterministic=False):
 
