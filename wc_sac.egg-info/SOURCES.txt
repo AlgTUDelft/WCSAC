@@ -1,0 +1,9 @@
+LICENSE
+README.md
+setup.py
+wc_sac/__init__.py
+wc_sac.egg-info/PKG-INFO
+wc_sac.egg-info/SOURCES.txt
+wc_sac.egg-info/dependency_links.txt
+wc_sac.egg-info/requires.txt
+wc_sac.egg-info/top_level.txt
