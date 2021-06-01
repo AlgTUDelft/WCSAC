@@ -9,8 +9,8 @@ import shutil
 import numpy as np
 import tensorflow as tf
 import os.path as osp, time, atexit, os
-from wcsac.utils.mpi_tools import proc_id, mpi_statistics_scalar
-from wcsac.utils.serialization_utils import convert_json
+from safe_rl.utils.mpi_tools import proc_id, mpi_statistics_scalar
+from safe_rl.utils.serialization_utils import convert_json
 
 color2num = dict(
     gray=30,
