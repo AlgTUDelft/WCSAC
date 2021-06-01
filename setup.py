@@ -8,8 +8,8 @@ assert sys.version_info.major == 3 and sys.version_info.minor >= 6, \
     + "Please install it before proceeding."
 
 setup(
-    name='wcsac',
-    packages=['wcsac'],
+    name='wc_sac',
+    packages=['wc_sac'],
     install_requires=[
         'gym~=0.15.3',
         'joblib==0.14.0',
