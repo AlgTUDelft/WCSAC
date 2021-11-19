@@ -1,15 +1,17 @@
 #Portions of the code are adapted from Safety Starter Agents and Spinning Up, released by OpenAI under the MIT license.
 #!/usr/bin/env python
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+
+#import tensorflow.compat.v1 as tf
+#tf.disable_v2_behavior()
 
 from functools import partial
 import numpy as np
+import tensorflow as tf
 import gym
 import time
-from dark_sac.utils.logx import EpochLogger
-from dark_sac.utils.mpi_tf import sync_all_params, MpiAdamOptimizer
-from dark_sac.utils.mpi_tools import mpi_fork, mpi_sum, proc_id, mpi_statistics_scalar, num_procs
+from wc_sac.utils.logx import EpochLogger
+from wc_sac.utils.mpi_tf import sync_all_params, MpiAdamOptimizer
+from wc_sac.utils.mpi_tools import mpi_fork, mpi_sum, proc_id, mpi_statistics_scalar, num_procs
 from safety_gym.envs.engine import Engine
 from scipy.stats import norm
 import math as m
@@ -800,7 +802,7 @@ if __name__ == '__main__':
     except:
         print('Make sure to install Safety Gym to use constrained RL environments.')
 
-    from dark_sac.utils.run_utils import setup_logger_kwargs
+    from wc_sac.utils.run_utils import setup_logger_kwargs
     
     logger_kwargs = setup_logger_kwargs(args.exp_name, args.seed)
     logger_kwargs= args.logger_kwargs_str
