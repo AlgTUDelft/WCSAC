@@ -17,8 +17,8 @@ from scipy.stats import norm
 import math as m
 
 #only use memory*0.9
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
-sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+#gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
+#sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
 m_pi = tf.constant(m.pi)
 
