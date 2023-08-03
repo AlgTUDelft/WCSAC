@@ -18,7 +18,7 @@ To install this package:
 ```
 git clone https://github.com/AlgTUDelft/WCSAC.git
 
-cd wcsac
+cd WCSAC/
 
 pip install -e .
 ```
@@ -47,13 +47,28 @@ If you use WCSAC code in your paper, please cite:
   title     = {{WCSAC: Worst-Case Soft Actor Critic for Safety-Constrained Reinforcement Learning}},
   author    = {
       Yang, Qisong and 
-      Simão, Thiago D. and
+      Sim{\~{a}}o, Thiago D. and
       Tindemans, Simon H. and
       Spaan, Matthijs T. J.
   },
   booktitle = {Thirty-Fifth AAAI Conference on Artificial Intelligence},
+  pages     = {10639--10646},
   year      = {2021}
 }
 ```
 
-
+```
+@article{WCSAC-IQN,
+  author       = {Qisong Yang and
+                  Thiago D. Sim{\~{a}}o and
+                  Simon H. Tindemans and
+                  Matthijs T. J. Spaan},
+  title        = {Safety-constrained reinforcement learning with a distributional safety
+                  critic},
+  journal      = {Mach. Learn.},
+  volume       = {112},
+  number       = {3},
+  pages        = {859--887},
+  year         = {2023}
+}
+```
